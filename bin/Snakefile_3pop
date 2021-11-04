@@ -1,0 +1,268 @@
+#################################################################################################################################
+#################################################################################################################################
+#####                                                                                                                       #####
+#####    This file is part of Demographic Inferences with Linked Selection : DILS.                                          #####
+#####                                                                                                                       #####   
+#####    DILS is free software: you can redistribute it and/or modify                                                       #####
+#####    it under the terms of the GNU General Public License as published by                                               #####
+#####    the Free Software Foundation, either version 3 of the License, or                                                  #####
+#####    (at your option) any later version.                                                                                #####
+#####                                                                                                                       #####    
+#####    DILS is distributed in the hope that it will be useful,                                                            #####
+#####    but WITHOUT ANY WARRANTY; without even the implied warranty of                                                     #####
+#####    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                                                      #####
+#####    GNU General Public License for more details.                                                                       #####
+#####                                                                                                                       #####    
+#####    You should have received a copy of the GNU General Public License                                                  #####
+#####    along with DILS.  If not, see <https://www.gnu.org/licenses/>.                                                     #####
+#####                                                                                                                       #####    
+#####    Please send bugreports with examples or suggestions to                                                             #####
+#####    camille.roux@univ-lille.fr                                                                                         #####
+#####                                                                                                                       #####    
+#####    Or write a post on https://groups.google.com/forum/#!forum/dils---demographic-inferences-with-linked-selection     #####
+#####                                                                                                                       #####
+#################################################################################################################################
+#################################################################################################################################
+
+# to launch #####################
+# module load pypy/2.7-5.10.0
+# module load python/2.7
+# module load snakemake/5.19.2
+# module load r/4.0.0
+#################################
+
+# python
+python = 'python2'
+pypy = 'pypy'
+
+# links to the codes
+#binpath = "/shared/mfs/data/home/croux/scratch/morpho/bin" # where the programs/codes are located
+#projectpath = "/shared/mfs/data/home/croux/scratch/morpho/bin/dev" # where the analysis are run
+
+#binpath = "/shared/ifbstor1/home/croux/scratch/morpho/bin" # where the programs/codes are located
+#binpath = "/shared/home/croux/scratch/morpho/bin_snp" # where the programs/codes are located
+binpath = "/shared/ifbstor1/home/croux/scratch/morpho/DILS_3pop_SNP/bin"
+#projectpath = "/shared/ifbstor1/home/croux/scratch/morpho/resub" # where the analysis are run
+#projectpath = "/shared/home/croux/scratch/morpho"
+projectpath = "/shared/ifbstor1/home/croux/scratch/morpho/DILS_3pop_SNP/analysis"
+
+# general property
+nMultilocus = 1000 # number of multilocus simulations per iteration (500)
+
+nCPU_R = 8 # number of CPUs for the model comp for the model forest R functions (8)
+ntree = 1000 # number of tree for the random forest (RF) model comparison (1000)
+nIterations_model_comp = 10 # number of subdirectories for the simulations used in the RF model comparison
+nIterations_estim_1_3 = 200 # number of subdirectories for the simulations used in the nnet param estimates (500)
+nIterations_estim_2 = 50 # number of subdirectories for the simulations used in the nnet param estimates (250)
+nPosterior1 = 5000 # (5000)
+nPosterior2 = 1000 # (2000)
+nPosterior3 = 5000 # (5000)
+
+ITERATIONS_MODEL_COMP = range(nIterations_model_comp)
+MODELS_COMP = ['ab_abc_1M_1N', 'ab_abc_1M_2N', 'ab_abc_2M_1N', 'ab_abc_2M_2N', 'ab_AbC_1M_1N', 'ab_AbC_1M_2N', 'ab_AbC_2M_1N', 'ab_AbC_2M_2N', 'ab_aBC_1M_1N', 'ab_aBC_1M_2N', 'ab_aBC_2M_1N', 'ab_aBC_2M_2N', 'ab_ABC_1M_1N', 'ab_ABC_1M_2N', 'ab_ABC_2M_1N', 'ab_ABC_2M_2N', 'AB_abc_1M_1N', 'AB_abc_1M_2N', 'AB_abc_2M_1N', 'AB_abc_2M_2N', 'AB_AbC_1M_1N', 'AB_AbC_1M_2N', 'AB_AbC_2M_1N', 'AB_AbC_2M_2N', 'AB_aBC_1M_1N', 'AB_aBC_1M_2N', 'AB_aBC_2M_1N', 'AB_aBC_2M_2N', 'AB_ABC_1M_1N', 'AB_ABC_1M_2N', 'AB_ABC_2M_1N', 'AB_ABC_2M_2N']
+
+# first and second estimation of parameters
+nIterations_gof = 10 # number of subdirectories for the simulations used in the nnet param estimates (10)
+ITERATIONS_ESTIMATES_1_3 = range(nIterations_estim_1_3)
+ITERATIONS_GOF = range(nIterations_gof)
+
+# second estimation of parameters
+ITERATIONS_ESTIMATES_2 = range(nIterations_estim_2)
+ITERATIONS_GOF_2 = range(nIterations_gof)
+
+# informations from the config.yaml file
+mail_address = config['mail_address']
+nspecies = config['nspecies']
+infile = config['fileName']
+timeStamp = config['timeStamp']
+nameA = config['nameA']
+nameB = config['nameB']
+nameC = config['nameC']
+nameOutgroup = config['nameOut']
+region = config['region']
+Lmin = config['Lmin']
+max_N_tolerated = config['max_N_tolerated']
+nMinA = config['nMinA']
+nMinB = config['nMinB']
+nMinC = config['nMinC']
+Nref = config['Nref']
+mu = config['mu']
+rho_over_theta = config['rho_over_theta']
+binpath = config['binpath']
+config_yaml = config['config_yaml']
+
+if nameOutgroup=='NA':
+	outgroup=0
+else:
+	outgroup=1
+
+fixed_Na = config['fixed_Na']
+if fixed_Na==True:
+	submit_3pop='submit_3pop_popGrowth_NaFixed.py'
+else:
+	submit_3pop='submit_3pop_popGrowth.py'
+
+rule targets:
+	input:
+		yaml = expand("{timeStamp}/config.yaml", timeStamp=timeStamp),
+		bpfile = expand("{timeStamp}/bpfile", timeStamp=timeStamp),
+		ABCstat = expand("{timeStamp}/ABCstat.txt", timeStamp=timeStamp),
+		nLoci = expand("{timeStamp}/nLoci.txt", timeStamp=timeStamp),
+		infos = expand("{timeStamp}/{nameA}_{nameB}_{nameC}_infos.txt", timeStamp=timeStamp, nameA=nameA, nameB=nameB, nameC=nameC),
+		ms = expand("{timeStamp}/{nameA}_{nameB}_{nameC}.ms", timeStamp=timeStamp, nameA=nameA, nameB=nameB, nameC=nameC),
+		
+		hierarchical_models = expand("{timeStamp}/modelComp/hierarchical_models.txt", timeStamp=timeStamp),
+		best_model = expand("{timeStamp}/modelComp/best_model.txt", timeStamp=timeStamp),
+		posterior_RF = expand("{timeStamp}/modelComp/posterior_RF.txt",  timeStamp=timeStamp),
+		
+		gofRF = expand("{timeStamp}/gof/bestModel/ABCstat.txt", timeStamp=timeStamp),
+
+		optimization = expand("{timeStamp}/optimization1/output.txt", timeStamp=timeStamp),
+		posterior = expand("{timeStamp}/posterior/output.txt", timeStamp=timeStamp)
+
+	shell:
+		"""
+		tar -zcvf {timeStamp}.tar.gz {input.yaml} {input.bpfile} {input.ABCstat} {input.nLoci} {input.hierarchical_models} {input.best_model} {input.posterior_RF} {input.gofRF}
+		touch slurm_tmp.out
+		rm slurm*out
+#		rm -rf {timeStamp}
+#		sleep 30
+		"""
+
+
+rule fasta2ABC_3pops:
+	# pypy fasta2ABC_2pops.py ../../all_loci.fasta txn mal num coding 250 0.007 12 100000 0.000000003 1
+	input:
+		expand("{infile}", infile=infile)
+	output:
+		expand("{timeStamp}/bpfile", timeStamp=timeStamp),
+		expand("{timeStamp}/ABCstat.txt", timeStamp=timeStamp),
+		expand("{timeStamp}/nLoci.txt", timeStamp=timeStamp),
+		expand("{timeStamp}/config.yaml", timeStamp=timeStamp),
+		expand("{timeStamp}/{nameA}_{nameB}_{nameC}_infos.txt", timeStamp=timeStamp, nameA=nameA, nameB=nameB, nameC=nameC),
+		expand("{timeStamp}/{nameA}_{nameB}_{nameC}.ms", timeStamp=timeStamp, nameA=nameA, nameB=nameB, nameC=nameC)
+	threads: 2
+	shell:
+		"""
+		{pypy} {binpath}/fasta2ABC_3pops.py {infile} {timeStamp} {nameA} {nameB} {nameC} {nameOutgroup} {region} {Lmin} {max_N_tolerated} {nMinA} {nMinB} {nMinC} {Nref} {mu} {rho_over_theta} {binpath}
+		sleep 5
+		cp {config_yaml} {timeStamp}/config.yaml
+		cd {timeStamp}
+		cat {nameA}_{nameB}_{nameC}.ms | pypy {binpath}/mscalc_3pop.py
+		cd ..
+		mkdir {timeStamp}/modelComp
+		"""
+
+
+
+rule simulations_modelComparison:
+	input:
+		expand("{timeStamp}/ABCstat.txt", timeStamp=timeStamp)
+	output:
+                "{timeStamp}/modelComp/{model}_{i}/priorfile.txt",
+		"{timeStamp}/modelComp/{model}_{i}/ABCstat.txt"
+	threads: 1
+	shell:
+		"""
+#		mkdir {timeStamp}/modelComp/{wildcards.model}_{wildcards.i}
+		cd {timeStamp}/modelComp/{wildcards.model}_{wildcards.i}
+		ln -sfn ../../bpfile .
+		{pypy} {binpath}/{submit_3pop} {wildcards.model} {nMultilocus} {binpath} {config_yaml} ABC
+		"""	
+
+rule modelComparison:
+	input:
+		expand("{timeStamp}/modelComp/{model}_{i}/priorfile.txt", timeStamp=timeStamp, model=MODELS_COMP, i=ITERATIONS_MODEL_COMP),
+		expand("{timeStamp}/modelComp/{model}_{i}/ABCstat.txt", timeStamp=timeStamp, model=MODELS_COMP, i=ITERATIONS_MODEL_COMP)
+	output:
+		expand("{timeStamp}/modelComp/best_model.txt", timeStamp=timeStamp),
+		expand("{timeStamp}/modelComp/hierarchical_models.txt", timeStamp=timeStamp),
+		expand("{timeStamp}/modelComp/posterior_RF.txt",  timeStamp=timeStamp)
+		
+	threads: nCPU_R
+	shell:
+		"""
+		Rscript {binpath}/randomForest.R projectpath={projectpath} binpath={binpath} timeStamp={timeStamp} nIterations={nIterations_model_comp} ncores={nCPU_R}
+		"""
+
+
+
+rule simulations_gof_RF:
+	input:
+		best = expand("{timeStamp}/modelComp/best_model.txt", timeStamp=timeStamp)
+	output:
+                "{timeStamp}/gof/bestModel/priorfile.txt",
+		"{timeStamp}/gof/bestModel/ABCstat.txt"
+	threads: 1
+	shell:
+		"""
+		best_model=$(cat {input.best})
+#		mkdir {timeStamp}/gof/bestModel
+		cd {timeStamp}/gof/bestModel
+		ln -sfn ../../bpfile .
+		{pypy} {binpath}/{submit_3pop} ${{best_model}} {nMultilocus} {binpath} {config_yaml} gof_RF
+		"""
+
+
+#### posterior
+rule simulations_posterior_estimate:
+	input:
+		best = expand("{timeStamp}/modelComp/best_model.txt", timeStamp=timeStamp),
+		posterior = expand("{timeStamp}/modelComp/posterior_RF.txt", timeStamp=timeStamp)
+	output:
+                "{timeStamp}/posterior/bestModel_{i}/priorfile.txt",
+		"{timeStamp}/posterior/bestModel_{i}/ABCstat.txt"
+	threads: 1
+	shell:
+		"""
+		best_model=$(cat {input.best})
+#		mkdir {timeStamp}/posterior/bestModel_{wildcards.i}
+		cd {timeStamp}/posterior/bestModel_{wildcards.i}
+		ln -sfn ../../bpfile .
+		{pypy} {binpath}/{submit_3pop} ${{best_model}} {nMultilocus} {binpath} {config_yaml} ABC 
+		"""
+
+
+rule estimate_posterior:
+	input:
+                expand("{timeStamp}/posterior/bestModel_{i}/priorfile.txt", timeStamp=timeStamp, i=ITERATIONS_ESTIMATES_1_3),
+		expand("{timeStamp}/posterior/bestModel_{i}/ABCstat.txt", timeStamp=timeStamp, i=ITERATIONS_ESTIMATES_1_3)
+	output:
+		expand("{timeStamp}/posterior/output.txt", timeStamp=timeStamp)
+	shell:
+		"""
+		touch {output}
+		"""
+
+
+
+#### optimisation
+rule simulations_optimization1:
+	input:
+		best = expand("{timeStamp}/modelComp/best_model.txt", timeStamp=timeStamp),
+		posterior = expand("{timeStamp}/modelComp/posterior_RF.txt", timeStamp=timeStamp)
+	output:
+                "{timeStamp}/optimization1/bestModel_{i}/priorfile.txt",
+		"{timeStamp}/optimization1/bestModel_{i}/ABCstat.txt"
+	threads: 1
+	shell:
+		"""
+		best_model=$(cat {input.best})
+#		mkdir {timeStamp}/optimization1/bestModel_{wildcards.i}
+		cd {timeStamp}/optimization1/bestModel_{wildcards.i}
+		ln -sfn ../../bpfile .
+		{pypy} {binpath}/{submit_3pop} ${{best_model}} {nMultilocus} {binpath} {config_yaml} optimization1
+		"""
+
+rule treat_optimization1:
+	input:
+                expand("{timeStamp}/optimization1/bestModel_{i}/priorfile.txt", timeStamp=timeStamp, i=ITERATIONS_ESTIMATES_1_3),
+		expand("{timeStamp}/optimization1/bestModel_{i}/ABCstat.txt", timeStamp=timeStamp, i=ITERATIONS_ESTIMATES_1_3)
+	output:
+		expand("{timeStamp}/optimization1/output.txt", timeStamp=timeStamp)
+	shell:
+		"""
+		touch {output}
+		"""
+
+
